@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>数字九宫格 · 数独闯关</title>
+<style>
+:root{
+  --ink:#2D3436; --ink2:#636E72; --ink3:#9AA4AB;
+  --line:#DDE1E6; --line2:#B9C0C7;
+  --bg:#F5F6FA; --panel:#FFFFFF;
+  --brand:#0D6EA8; --brand-soft:#E7F0F7;
+  --accent:#E17055; --ok:#00B894; --danger:#D63031;
+  --peer:#EDF0F4; --same:#D8E7F3; --sel:#BFDCF0;
+  --radius:8px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{overflow-x:hidden}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  font-size:14px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+button{font-family:inherit;font-size:inherit;color:inherit;cursor:pointer;border:none;background:none}
+.hide{display:none !important}
+
+/* ---------- 通用 ---------- */
+.screen{max-width:900px;margin:0 auto;padding:20px 16px 40px;min-height:100vh}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:9px 16px;border:1px solid var(--line2);border-radius:var(--radius);
+  background:#fff;color:var(--ink);transition:background .14s,border-color .14s;
+}
+.btn:hover{background:#F2F4F7;border-color:var(--ink3)}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--ink);border-color:var(--ink);color:#fff}
+.btn.primary:hover{background:#3D4548}
+.btn.ghost{border-color:transparent;color:var(--ink2)}
+.btn.ghost:hover{background:#EBEEF2}
+.btn.sm{padding:6px 11px;font-size:13px}
+
+/* ---------- 首页 ---------- */
+.home-head{padding:26px 0 22px;border-bottom:1px solid var(--line);margin-bottom:24px}
+.home-head h1{margin:0 0 8px;font-size:26px;letter-spacing:1px;font-weight:700}
+.home-head h1 .dot{color:var(--accent)}
+.home-head p{margin:0;color:var(--ink2)}
+.home-meta{display:flex;gap:22px;margin-top:16px;flex-wrap:wrap;font-size:13px;color:var(--ink2)}
+.home-meta b{color:var(--ink);font-weight:600}
+
+.diff-list{display:grid;gap:12px}
+.diff-card{
+  display:grid;grid-template-columns:66px 1fr auto;align-items:center;gap:16px;
+  padding:16px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  cursor:pointer;transition:border-color .14s,background .14s;text-align:left;width:100%;
+}
+.diff-card:hover{border-color:var(--line2);background:#FCFDFE}
+.diff-badge{
+  width:66px;height:66px;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;
+  font-size:19px;font-weight:700;letter-spacing:1px;color:#fff;
+}
+.diff-info h3{margin:0 0 4px;font-size:16px}
+.diff-info p{margin:0 0 8px;color:var(--ink2);font-size:13px}
+.diff-bar{height:5px;background:#E9ECF0;border-radius:3px;overflow:hidden;max-width:260px}
+.diff-bar i{display:block;height:100%;background:var(--ok);transition:width .3s}
+.diff-stat{text-align:right;font-size:13px;color:var(--ink2);white-space:nowrap}
+.diff-stat b{display:block;font-size:20px;color:var(--ink);font-weight:700;line-height:1.2}
+.rules{margin-top:28px;padding-top:18px;border-top:1px solid var(--line);color:var(--ink2);font-size:13px}
+.rules h4{margin:0 0 8px;color:var(--ink);font-size:14px}
+.rules ul{margin:0 0 10px;padding-left:20px}
+.rules li{margin-bottom:4px}
+.kbd{display:inline-block;padding:1px 6px;border:1px solid var(--line2);border-radius:4px;background:#fff;font-size:12px;font-family:Consolas,monospace}
+.foot{margin-top:24px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+
+/* ---------- 关卡选择 ---------- */
+.bar{display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.bar h2{margin:0;font-size:18px;flex:1}
+.bar .sub{color:var(--ink2);font-size:13px}
+.lv-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+@media(max-width:520px){.lv-grid{grid-template-columns:repeat(4,1fr)}}
+.lv{
+  position:relative;aspect-ratio:1/1;border:1px solid var(--line);border-radius:var(--radius);
+  background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  font-size:17px;font-weight:600;color:var(--ink);transition:border-color .14s,background .14s;
+}
+.lv:hover:not(.locked){border-color:var(--brand);background:var(--brand-soft)}
+.lv.locked{color:var(--ink3);background:#F2F4F7;cursor:not-allowed;border-color:#E6E9EC}
+.lv.done{background:#F1FAF7;border-color:#BEE5D8}
+.lv .stars{display:flex;gap:1px;font-size:9px;color:#E6B422;height:11px;line-height:1}
+.lv .stars span{opacity:.22}
+.lv .stars span.on{opacity:1}
+.lv .t{font-size:10px;color:var(--ink3);font-weight:400}
+.legend{margin-top:18px;color:var(--ink2);font-size:12px;display:flex;gap:18px;flex-wrap:wrap}
+
+/* ---------- 游戏 ---------- */
+.game-top{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.stat{
+  display:flex;flex-direction:column;align-items:flex-start;padding:5px 12px;min-width:74px;
+  border:1px solid var(--line);border-radius:var(--radius);background:#fff;
+}
+.stat em{font-style:normal;font-size:11px;color:var(--ink3);letter-spacing:.5px}
+.stat b{font-size:15px;font-variant-numeric:tabular-nums}
+.stat.warn b{color:var(--danger)}
+.game-top .spacer{flex:1}
+
+.game-body{display:flex;gap:22px;align-items:flex-start;justify-content:center;flex-wrap:wrap}
+.board-wrap{width:min(93vw,510px)}
+.board{
+  --cs:calc(min(93vw,510px)/9);
+  width:100%;aspect-ratio:1/1;display:grid;grid-template-columns:repeat(9,1fr);
+  border:2px solid var(--ink);border-radius:3px;overflow:hidden;background:#fff;
+  user-select:none;
+}
+.cell{
+  position:relative;display:flex;align-items:center;justify-content:center;
+  border-right:1px solid var(--line);border-bottom:1px solid var(--line);
+  background:#fff;color:var(--brand);font-weight:600;
+  font-size:calc(var(--cs)*.55);cursor:pointer;transition:background .1s;
+}
+.cell.br{border-right:2px solid var(--ink)}
+.cell.bb{border-bottom:2px solid var(--ink)}
+.cell:nth-child(9n){border-right:none}
+.cell:nth-child(n+73){border-bottom:none}
+.cell.given{background:#F7F8FA;color:var(--ink);font-weight:700}
+.cell.peer{background:var(--peer)}
+.cell.same{background:var(--same)}
+.cell.hinted{background:#E2F6EE;color:#0A8F6C}
+.cell.wrong{background:#FBE0DE;color:var(--danger)}
+.cell.sel{background:var(--sel);box-shadow:inset 0 0 0 2px var(--brand)}
+.cell .val{pointer-events:none}
+.cell .notes{
+  position:absolute;inset:3px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);
+  font-size:calc(var(--cs)*.25);font-weight:400;color:#8C979F;pointer-events:none;line-height:1;
+}
+.cell .notes span{display:flex;align-items:center;justify-content:center}
+.cell.wrong .notes,.cell.sel .notes{color:inherit}
+.board.done .cell{animation:pop .32s ease}
+@keyframes pop{0%{transform:scale(1)}45%{transform:scale(.86)}100%{transform:scale(1)}}
+
+.panel{width:min(93vw,300px);display:flex;flex-direction:column;gap:14px}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pad-btn{
+  position:relative;height:56px;border:1px solid var(--line2);border-radius:var(--radius);background:#fff;
+  font-size:22px;font-weight:600;color:var(--brand);transition:background .12s,border-color .12s;
+}
+.pad-btn:hover{background:var(--brand-soft);border-color:var(--brand)}
+.pad-btn:active{transform:translateY(1px)}
+.pad-btn .c{position:absolute;right:5px;bottom:3px;font-size:10px;font-weight:400;color:var(--ink3)}
+.pad-btn.zero{color:var(--ink3);border-color:var(--line);background:#F7F8FA}
+.pad-btn.zero .c{color:var(--ok)}
+.tools{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.tool{
+  height:42px;border:1px solid var(--line2);border-radius:var(--radius);background:#fff;
+  display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;transition:background .12s,border-color .12s;
+}
+.tool:hover{background:#F2F4F7}
+.tool.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.tool:disabled{color:var(--ink3);border-color:var(--line);background:#F7F8FA;cursor:not-allowed}
+.tool svg{width:15px;height:15px;flex:none}
+.hint-left{font-size:11px;color:var(--ink3)}
+.tips{font-size:12px;color:var(--ink2);border-top:1px solid var(--line);padding-top:12px}
+.tips p{margin:0 0 5px}
+
+/* ---------- 遮罩 ---------- */
+.overlay{
+  position:fixed;inset:0;background:rgba(45,52,54,.72);display:flex;align-items:center;justify-content:center;
+  padding:20px;z-index:50;backdrop-filter:blur(2px);
+}
+.modal{
+  width:min(100%,380px);background:#fff;border-radius:10px;padding:26px 24px;text-align:center;
+  box-shadow:0 12px 40px rgba(0,0,0,.18);
+}
+.modal h2{margin:0 0 6px;font-size:21px}
+.modal .sub{color:var(--ink2);margin:0 0 18px;font-size:13px}
+.modal .big-stars{font-size:34px;letter-spacing:6px;color:#E6B422;margin:6px 0 14px;height:42px}
+.modal .big-stars span{opacity:.2}
+.modal .big-stars span.on{opacity:1}
+.result-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
+.result-grid div{border:1px solid var(--line);border-radius:var(--radius);padding:9px 4px}
+.result-grid em{font-style:normal;display:block;font-size:11px;color:var(--ink3);margin-bottom:2px}
+.result-grid b{font-size:17px;font-variant-numeric:tabular-nums}
+.modal-actions{display:flex;flex-direction:column;gap:9px}
+.modal-actions .row{display:flex;gap:9px}
+.modal-actions .row .btn{flex:1}
+.toast{
+  position:fixed;left:50%;bottom:46px;transform:translateX(-50%) translateY(14px);
+  background:rgba(45,52,54,.93);color:#fff;padding:9px 18px;border-radius:20px;font-size:13px;
+  opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:80;white-space:nowrap;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media(max-width:700px){
+  .game-body{gap:16px}
+  .panel{width:min(93vw,510px)}
+  .pad{grid-template-columns:repeat(9,1fr);gap:5px}
+  .pad-btn{height:46px;font-size:18px}
+  .pad-btn .c{display:none}
+  .tools{grid-template-columns:repeat(4,1fr);gap:6px}
+  .tool{font-size:12px;height:40px}
+  .stat{min-width:62px;padding:4px 9px}
+  .screen{padding:14px 12px 30px}
+}
+</style>
+</head>
+<body>
+
+<!-- ================= 首页 ================= -->
+<section class="screen" id="screen-home">
+  <div class="home-head">
+    <h1>数字九宫格<span class="dot">.</span></h1>
+    <p>经典 9×9 数独闯关 · 每行、每列、每个 3×3 宫内填入 1-9 且不重复</p>
+    <div class="home-meta">
+      <div>总关卡 <b id="m-total">80</b></div>
+      <div>已通关 <b id="m-done">0</b></div>
+      <div>已获星 <b id="m-stars">0</b></div>
+      <div>难度 <b>4 级</b></div>
+    </div>
+  </div>
+
+  <div class="diff-list" id="diff-list"></div>
+
+  <div class="rules">
+    <h4>玩法与规则</h4>
+    <ul>
+      <li>在 9×9 棋盘中填入数字 1-9，使每行、每列、每个 3×3 宫内的数字都不重复。</li>
+      <li>题目给定数字为黑色加粗，不可修改；你填写的数字为蓝色。</li>
+      <li>填入与答案不符的数字会立即标红并计入错误次数。</li>
+      <li>「笔记」模式可在格内记录候选数，落子后会自动清理同行列宫的对应候选。</li>
+      <li>每关有 3 次提示；零错误且未使用提示可获得三星。</li>
+      <li>关卡按顺序解锁，通过当前关即开启下一关；进度自动保存在本机浏览器。</li>
+      <li>难度由「提示数」与「必须试探的格数」共同决定：简单 / 中级 全程可推理完成，高级 / 地狱 则需要假设与回溯。</li>
+    </ul>
+    <h4>键盘操作（电脑端）</h4>
+    <div>
+      <span class="kbd">↑↓←→</span> 移动光标　<span class="kbd">1-9</span> 填数　
+      <span class="kbd">Del</span> 擦除　<span class="kbd">空格</span> 切换笔记　
+      <span class="kbd">Ctrl+Z</span> 撤销　<span class="kbd">H</span> 提示　<span class="kbd">Esc</span> 暂停
+    </div>
+  </div>
+
+  <div class="foot">
+    <button class="btn ghost sm" id="btn-reset">重置全部进度</button>
+    <span style="color:var(--ink3);font-size:12px">题目均为唯一解，由算法生成并校验</span>
+  </div>
+</section>
+
+<!-- ================= 关卡选择 ================= -->
+<section class="screen hide" id="screen-levels">
+  <div class="bar">
+    <button class="btn sm ghost" id="btn-lv-back">← 返回</button>
+    <h2 id="lv-title">简单模式</h2>
+    <span class="sub" id="lv-sub"></span>
+  </div>
+  <div class="lv-grid" id="lv-grid"></div>
+  <div class="legend">
+    <span>已通关关卡显示获得星数</span>
+    <span>灰色为未解锁</span>
+    <span style="color:var(--ink3)">提示数越少，难度越高</span>
+  </div>
+</section>
+
+<!-- ================= 游戏 ================= -->
+<section class="screen hide" id="screen-game">
+  <div class="game-top">
+    <button class="btn sm ghost" id="btn-back">←</button>
+    <div class="stat"><em>关卡</em><b id="g-level">简单 1</b></div>
+    <div class="stat"><em>用时</em><b id="g-time">00:00</b></div>
+    <div class="stat" id="g-mistake-stat"><em>错误</em><b id="g-mistake">0</b></div>
+    <div class="stat"><em>提示</em><b id="g-hint">3</b></div>
+    <div class="spacer"></div>
+    <button class="btn sm ghost" id="btn-pause">暂停</button>
+  </div>
+
+  <div class="game-body">
+    <div class="board-wrap">
+      <div class="board" id="board"></div>
+    </div>
+
+    <div class="panel">
+      <div class="pad" id="pad"></div>
+      <div class="tools">
+        <button class="tool" id="t-undo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 5 5v0a5 5 0 0 1-5 5H9"/></svg>
+          <span class="lbl">撤销</span>
+        </button>
+        <button class="tool" id="t-erase">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"/><path d="m14.5 5.5 4 4L9 19H4v-5z"/></svg>
+          <span class="lbl">擦除</span>
+        </button>
+        <button class="tool" id="t-note">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+          <span class="lbl">笔记</span>
+        </button>
+        <button class="tool" id="t-hint">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg>
+          <span class="lbl">提示</span>
+        </button>
+      </div>
+      <div class="tips">
+        <p>点击格子选中，再点数字填入。蓝字为填入值，黑字为题目给定。</p>
+        <p id="tip-note" class="hide" style="color:var(--accent)">笔记模式：填入的数字将作为候选记录。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 遮罩 ================= -->
+<div class="overlay hide" id="ov-pause">
+  <div class="modal">
+    <h2>已暂停</h2>
+    <p class="sub" id="pause-sub">休息一下，进度会自动保留</p>
+    <div class="result-grid">
+      <div><em>关卡</em><b id="p-level">—</b></div>
+      <div><em>用时</em><b id="p-time">00:00</b></div>
+      <div><em>错误</em><b id="p-mistake">0</b></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn primary" id="btn-resume">继续游戏</button>
+      <div class="row">
+        <button class="btn" id="btn-replay">重玩本关</button>
+        <button class="btn" id="btn-quit">关卡列表</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay hide" id="ov-win">
+  <div class="modal">
+    <h2>通关成功</h2>
+    <p class="sub" id="win-sub">简单 · 第 1 关</p>
+    <div class="big-stars" id="win-stars"><span>★</span><span>★</span><span>★</span></div>
+    <div class="result-grid">
+      <div><em>用时</em><b id="w-time">00:00</b></div>
+      <div><em>错误</em><b id="w-mistake">0</b></div>
+      <div><em>提示</em><b id="w-hint">0</b></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn primary" id="btn-next">下一关</button>
+      <div class="row">
+        <button class="btn" id="btn-again">再玩一次</button>
+        <button class="btn" id="btn-tolist">关卡列表</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ================= 数据 ================= */
+  /* 题库：4 难度 × 20 关，p = 题目(点为空)，s = 唯一解 */
+  var PUZZLES = JSON.parse(`__PUZZLE_DATA__`);
+
+  var DIFFS = [
+    { key: 'easy',   name: '简单', color: '#00B894', desc: '提示充足，全程可凭推理落子', range: '46 → 41 个提示数' },
+    { key: 'medium', name: '中级', color: '#0D6EA8', desc: '提示减少，需要逐格推导排除', range: '38 → 33 个提示数' },
+    { key: 'hard',   name: '高级', color: '#E17055', desc: '必须试探与回溯，考验耐心',   range: '31 → 27 个提示数' },
+    { key: 'hell',   name: '地狱', color: '#D63031', desc: '提示极少，反复推演才能推进', range: '24 → 22 个提示数' }
+  ];
+  var PER_LEVEL = 20;
+  var KEY = 'sudoku9.progress.v1';
+  var HINTS = 3;
+
+  var progress = {};
+  ['easy', 'medium', 'hard', 'hell'].forEach(function (k) {
+    progress[k] = { u: 1, done: {} };
+  });
+
+  /* ================= 工具 ================= */
+  var $ = function (id) { return document.getElementById(id); };
+
+  function fmtTime(sec) {
+    sec = Math.max(0, Math.floor(sec));
+    var m = Math.floor(sec / 60), s = sec % 60;
+    return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+  }
+  function boxOf(i) { return Math.floor(Math.floor(i / 9) / 3) * 3 + Math.floor((i % 9) / 3); }
+  function diffOf(key) {
+    for (var i = 0; i < DIFFS.length; i++) if (DIFFS[i].key === key) return DIFFS[i];
+    return DIFFS[0];
+  }
+  function toast(msg) {
+    var t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function () { t.classList.remove('show'); }, 1500);
+  }
+
+  /* ================= 进度存取 ================= */
+  function loadProgress() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (!raw) return;
+      var p = JSON.parse(raw);
+      DIFFS.forEach(function (d) {
+        if (p[d.key]) {
+          var u = parseInt(p[d.key].u, 10);
+          progress[d.key].u = (u >= 1 && u <= PER_LEVEL) ? u : 1;
+          progress[d.key].done = p[d.key].done || {};
+        }
+      });
+    } catch (e) { /* 忽略损坏数据 */ }
+  }
+  function saveProgress() {
+    try { localStorage.setItem(KEY, JSON.stringify(progress)); } catch (e) {}
+  }
+  function calcStars(mistakes, hintsUsed) {
+    if (mistakes === 0 && hintsUsed === 0) return 3;
+    if (mistakes <= 2 && hintsUsed <= 1) return 2;
+    return 1;
+  }
+  function statsOf(key) {
+    var done = progress[key].done, n = 0, s = 0;
+    for (var k in done) { if (done.hasOwnProperty(k)) { n++; s += done[k].stars || 0; } }
+    return { count: n, stars: s };
+  }
+
+  /* ================= 首页 ================= */
+  function renderHome() {
+    var total = 0, doneAll = 0, starAll = 0;
+    var html = '';
+    DIFFS.forEach(function (d) {
+      var st = statsOf(d.key);
+      doneAll += st.count; starAll += st.stars;
+      total += PER_LEVEL;
+      var pct = Math.round(st.count / PER_LEVEL * 100);
+      html += '<button class="diff-card" data-diff="' + d.key + '">' +
+        '<span class="diff-badge" style="background:' + d.color + '">' + d.name + '</span>' +
+        '<span class="diff-info">' +
+          '<h3>' + d.name + '模式 · 20 关</h3>' +
+          '<p>' + d.desc + '　<span style="color:var(--ink3)">' + d.range + '</span></p>' +
+          '<span class="diff-bar"><i style="width:' + pct + '%;background:' + d.color + '"></i></span>' +
+        '</span>' +
+        '<span class="diff-stat"><b>' + st.count + '/' + PER_LEVEL + '</b>' + st.stars + ' ★</span>' +
+      '</button>';
+    });
+    $('diff-list').innerHTML = html;
+    $('m-total').textContent = total;
+    $('m-done').textContent = doneAll;
+    $('m-stars').textContent = starAll;
+  }
+
+  /* ================= 关卡选择 ================= */
+  var curDiff = 'easy';
+
+  function renderLevels(key) {
+    curDiff = key;
+    var d = diffOf(key);
+    var st = statsOf(key);
+    $('lv-title').textContent = d.name + '模式';
+    $('lv-title').style.color = d.color;
+    $('lv-sub').textContent = '已通关 ' + st.count + '/' + PER_LEVEL + ' · 累计 ' + st.stars + ' 星';
+    var html = '';
+    for (var lv = 1; lv <= PER_LEVEL; lv++) {
+      var rec = progress[key].done[lv];
+      var unlocked = lv <= progress[key].u;
+      var cls = 'lv' + (unlocked ? '' : ' locked') + (rec ? ' done' : '');
+      var starsHtml = '<span class="stars">';
+      for (var s = 1; s <= 3; s++) {
+        starsHtml += '<span class="' + (rec && rec.stars >= s ? 'on' : '') + '">★</span>';
+      }
+      starsHtml += '</span>';
+      var inner = unlocked
+        ? '<span>' + lv + '</span>' + starsHtml + (rec ? '<span class="t">' + fmtTime(rec.time) + '</span>' : '<span class="t">未通过</span>')
+        : '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
+      html += '<button class="' + cls + '" data-lv="' + lv + '">' + inner + '</button>';
+    }
+    $('lv-grid').innerHTML = html;
+  }
+
+  /* ================= 游戏状态 ================= */
+  var G = {
+    diff: 'easy', lv: 1, solution: [], given: [], board: [], notes: [],
+    selected: -1, noteMode: false, mistakes: 0, hints: HINTS,
+    history: [], elapsed: 0, tickStart: 0, timer: null, paused: false, finished: false
+  };
+  var cells = [];
+  var boardEl = $('board');
+
+  function buildPad() {
+    var html = '';
+    for (var n = 1; n <= 9; n++) {
+      html += '<button class="pad-btn" data-num="' + n + '">' + n + '<span class="c" data-c="' + n + '">9</span></button>';
+    }
+    $('pad').innerHTML = html;
+  }
+
+  function buildBoardDom() {
+    boardEl.innerHTML = '';
+    cells = [];
+    for (var i = 0; i < 81; i++) {
+      var d = document.createElement('div');
+      d.className = 'cell';
+      d.setAttribute('data-i', i);
+      var v = document.createElement('span');
+      v.className = 'val';
+      var nt = document.createElement('div');
+      nt.className = 'notes';
+      for (var n = 1; n <= 9; n++) {
+        var sp = document.createElement('span');
+        sp.setAttribute('data-n', n);
+        sp.textContent = n;
+        nt.appendChild(sp);
+      }
+      d.appendChild(v);
+      d.appendChild(nt);
+      boardEl.appendChild(d);
+      cells.push(d);
+    }
+  }
+
+  function startGame(key, lv) {
+    var data = PUZZLES[key][lv - 1];
+    G.diff = key; G.lv = lv;
+    G.solution = data.s.split('').map(Number);
+    var p = data.p.split('');
+    G.given = p.map(function (c) { return c !== '.'; });
+    G.board = p.map(function (c) { return c === '.' ? 0 : Number(c); });
+    G.notes = new Array(81);
+    for (var i = 0; i < 81; i++) G.notes[i] = 0;
+    G.selected = -1; G.noteMode = false; G.mistakes = 0; G.hints = HINTS;
+    G.history = []; G.elapsed = 0; G.finished = false; G.paused = false;
+
+    buildBoardDom();
+    boardEl.classList.remove('done');
+    $('g-level').textContent = diffOf(key).name + ' ' + lv;
+    $('t-note').classList.remove('on');
+    $('tip-note').classList.add('hide');
+    $('g-mistake-stat').classList.remove('warn');
+    updateStats();
+    renderBoard();
+    startTimer();
+    show('screen-game');
+  }
+
+  function updateStats() {
+    $('g-mistake').textContent = G.mistakes;
+    $('g-hint').textContent = G.hints;
+    $('t-hint').disabled = G.hints <= 0;
+    // 数字剩余统计
+    var cnt = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    for (var i = 0; i < 81; i++) {
+      var v = G.board[i];
+      if (v && v === G.solution[i]) cnt[v]++;
+    }
+    for (var n = 1; n <= 9; n++) {
+      var el = $('pad').querySelector('[data-c="' + n + '"]');
+      var left = 9 - cnt[n];
+      el.textContent = left;
+      el.parentNode.classList.toggle('zero', left <= 0);
+    }
+  }
+
+  function renderBoard() {
+    var sel = G.selected;
+    var selRow = sel >= 0 ? Math.floor(sel / 9) : -1;
+    var selCol = sel >= 0 ? sel % 9 : -1;
+    var selBox = sel >= 0 ? boxOf(sel) : -1;
+    var selVal = sel >= 0 ? G.board[sel] : 0;
+
+    for (var i = 0; i < 81; i++) {
+      var el = cells[i];
+      var v = G.board[i];
+      var cls = 'cell';
+      if (G.given[i]) cls += ' given';
+      if (i % 9 === 2 || i % 9 === 5) cls += ' br';
+      var r = Math.floor(i / 9);
+      if (r === 2 || r === 5) cls += ' bb';
+      if (sel >= 0 && i !== sel && (r === selRow || i % 9 === selCol || boxOf(i) === selBox)) cls += ' peer';
+      if (selVal && v === selVal) cls += ' same';
+      if (G.hinted && G.hinted[i]) cls += ' hinted';
+      if (v && !G.given[i] && v !== G.solution[i]) cls += ' wrong';
+      if (i === sel) cls += ' sel';
+      el.className = cls;
+
+      var valEl = el.firstChild, noteEl = el.lastChild;
+      if (v) {
+        valEl.textContent = v;
+        noteEl.style.display = 'none';
+      } else {
+        valEl.textContent = '';
+        noteEl.style.display = 'grid';
+        var m = G.notes[i];
+        var kids = noteEl.children;
+        for (var k = 0; k < 9; k++) {
+          kids[k].style.visibility = (m >> k) & 1 ? 'visible' : 'hidden';
+        }
+      }
+    }
+  }
+
+  function selectCell(i) {
+    if (G.finished) return;
+    G.selected = i;
+    renderBoard();
+  }
+
+  function snapshot() {
+    G.history.push({
+      board: G.board.slice(),
+      notes: G.notes.slice(),
+      mistakes: G.mistakes
+    });
+    if (G.history.length > 300) G.history.shift();
+  }
+
+  function place(n) {
+    var i = G.selected;
+    if (i < 0) { toast('请先点击一个格子'); return; }
+    if (G.given[i]) { toast('这是题目给定的数字，不可修改'); return; }
+    if (G.finished) return;
+
+    snapshot();
+    G.hinted && (G.hinted[i] = false);
+
+    if (G.noteMode) {
+      if (G.board[i]) { G.board[i] = 0; }
+      G.notes[i] ^= (1 << (n - 1));
+      renderBoard();
+      return;
+    }
+
+    if (G.board[i] === n) {          // 再次点击同一个数字 -> 擦除
+      G.board[i] = 0;
+      renderBoard();
+      updateStats();
+      return;
+    }
+
+    G.board[i] = n;
+    G.notes[i] = 0;
+    if (n !== G.solution[i]) {
+      G.mistakes++;
+      $('g-mistake-stat').classList.add('warn');
+    } else {
+      // 自动清理同行/列/宫的候选数
+      var r = Math.floor(i / 9), c = i % 9, b = boxOf(i), bit = ~(1 << (n - 1));
+      for (var k = 0; k < 81; k++) {
+        if (k === i) continue;
+        if (Math.floor(k / 9) === r || k % 9 === c || boxOf(k) === b) G.notes[k] &= bit;
+      }
+    }
+    renderBoard();
+    updateStats();
+    checkWin();
+  }
+
+  function erase() {
+    var i = G.selected;
+    if (i < 0) { toast('请先点击一个格子'); return; }
+    if (G.given[i]) { toast('题目给定的数字不可擦除'); return; }
+    if (!G.board[i] && !G.notes[i]) return;
+    snapshot();
+    G.board[i] = 0;
+    G.notes[i] = 0;
+    if (G.hinted) G.hinted[i] = false;
+    renderBoard();
+    updateStats();
+  }
+
+  function undo() {
+    if (!G.history.length) { toast('没有可撤销的操作'); return; }
+    var s = G.history.pop();
+    G.board = s.board;
+    G.notes = s.notes;
+    G.mistakes = s.mistakes;
+    renderBoard();
+    updateStats();
+  }
+
+  function hint() {
+    if (G.finished) return;
+    if (G.hints <= 0) { toast('本关提示次数已用完'); return; }
+    var i = G.selected;
+    if (i < 0 || G.given[i] || G.board[i] === G.solution[i]) {
+      // 优先取选中的空格，否则找第一个空格
+      var empty = [];
+      for (var k = 0; k < 81; k++) if (!G.given[k] && G.board[k] !== G.solution[k]) empty.push(k);
+      if (!empty.length) return;
+      i = empty[Math.floor(Math.random() * empty.length)];
+    }
+    snapshot();
+    G.hinted = G.hinted || {};
+    G.board[i] = G.solution[i];
+    G.notes[i] = 0;
+    G.hinted[i] = true;
+    G.hints--;
+    G.selected = i;
+    renderBoard();
+    updateStats();
+    toast('已提示 1 个数字，剩余 ' + G.hints + ' 次');
+    checkWin();
+  }
+
+  function checkWin() {
+    for (var i = 0; i < 81; i++) if (G.board[i] !== G.solution[i]) return false;
+    G.finished = true;
+    stopTimer();
+    boardEl.classList.add('done');
+    var hintsUsed = HINTS - G.hints;
+    var stars = calcStars(G.mistakes, hintsUsed);
+    var rec = progress[G.diff].done[G.lv];
+    if (!rec || stars > rec.stars || (stars === rec.stars && G.elapsed < rec.time)) {
+      progress[G.diff].done[G.lv] = {
+        stars: rec ? Math.max(stars, rec.stars) : stars,
+        time: rec ? Math.min(G.elapsed, rec.time) : G.elapsed
+      };
+    }
+    if (G.lv + 1 <= PER_LEVEL && progress[G.diff].u < G.lv + 1) progress[G.diff].u = G.lv + 1;
+    saveProgress();
+    setTimeout(function () { showWin(); }, 420);
+    return true;
+  }
+
+  function showWin() {
+    var hintsUsed = HINTS - G.hints;
+    var stars = calcStars(G.mistakes, hintsUsed);
+    $('win-sub').textContent = diffOf(G.diff).name + ' · 第 ' + G.lv + ' 关';
+    $('w-time').textContent = fmtTime(G.elapsed);
+    $('w-mistake').textContent = G.mistakes;
+    $('w-hint').textContent = hintsUsed;
+    var spans = $('win-stars').children;
+    for (var i = 0; i < 3; i++) spans[i].className = i < stars ? 'on' : '';
+    $('btn-next').style.display = G.lv < PER_LEVEL ? '' : 'none';
+    $('ov-win').classList.remove('hide');
+  }
+
+  /* ================= 计时 ================= */
+  function startTimer() {
+    stopTimer();
+    G.tickStart = Date.now();
+    G.timer = setInterval(tick, 250);
+    $('g-time').textContent = fmtTime(G.elapsed);
+  }
+  function tick() {
+    if (G.paused || G.finished || !G.tickStart) return;
+    var now = G.elapsed + (Date.now() - G.tickStart) / 1000;
+    $('g-time').textContent = fmtTime(now);
+  }
+  function freeze() {
+    if (G.tickStart) {
+      G.elapsed += (Date.now() - G.tickStart) / 1000;
+      G.tickStart = 0;
+    }
+  }
+  function resume() {
+    if (!G.tickStart) G.tickStart = Date.now();
+  }
+  function stopTimer() {
+    freeze();
+    if (G.timer) { clearInterval(G.timer); G.timer = null; }
+    $('g-time').textContent = fmtTime(G.elapsed);
+  }
+
+  function pauseGame() {
+    if (G.finished || G.paused) return;
+    G.paused = true;
+    freeze();
+    $('p-level').textContent = diffOf(G.diff).name + ' ' + G.lv;
+    $('p-time').textContent = fmtTime(G.elapsed);
+    $('p-mistake').textContent = G.mistakes;
+    $('ov-pause').classList.remove('hide');
+  }
+  function resumeGame() {
+    G.paused = false;
+    resume();
+    $('ov-pause').classList.add('hide');
+  }
+
+  /* ================= 屏幕切换 ================= */
+  function show(id) {
+    ['screen-home', 'screen-levels', 'screen-game'].forEach(function (s) {
+      $(s).classList.toggle('hide', s !== id);
+    });
+    window.scrollTo(0, 0);
+  }
+
+  /* ================= 事件绑定 ================= */
+  // 首页
+  $('diff-list').addEventListener('click', function (e) {
+    var card = e.target.closest('.diff-card');
+    if (!card) return;
+    renderLevels(card.getAttribute('data-diff'));
+    show('screen-levels');
+  });
+  $('btn-reset').addEventListener('click', function () {
+    var btn = this;
+    if (btn.getAttribute('data-armed') !== '1') {   // 两步确认，避免弹窗被拦截
+      btn.setAttribute('data-armed', '1');
+      btn.textContent = '再次点击确认重置';
+      btn.style.color = 'var(--danger)';
+      btn.style.borderColor = 'var(--danger)';
+      clearTimeout(btn._t);
+      btn._t = setTimeout(function () {
+        btn.removeAttribute('data-armed');
+        btn.textContent = '重置全部进度';
+        btn.style.color = '';
+        btn.style.borderColor = '';
+      }, 4000);
+      return;
+    }
+    clearTimeout(btn._t);
+    btn.removeAttribute('data-armed');
+    btn.textContent = '重置全部进度';
+    btn.style.color = '';
+    btn.style.borderColor = '';
+    try { localStorage.removeItem(KEY); } catch (e) {}
+    ['easy', 'medium', 'hard', 'hell'].forEach(function (k) { progress[k] = { u: 1, done: {} }; });
+    renderHome();
+    toast('进度已重置');
+  });
+
+  // 关卡选择
+  $('btn-lv-back').addEventListener('click', function () { renderHome(); show('screen-home'); });
+  $('lv-grid').addEventListener('click', function (e) {
+    var btn = e.target.closest('.lv');
+    if (!btn) return;
+    var lv = Number(btn.getAttribute('data-lv'));
+    if (lv > progress[curDiff].u) { toast('先通过前面的关卡才能解锁'); return; }
+    startGame(curDiff, lv);
+  });
+
+  // 游戏内
+  $('board').addEventListener('click', function (e) {
+    var c = e.target.closest('.cell');
+    if (!c) return;
+    selectCell(Number(c.getAttribute('data-i')));
+  });
+  $('pad').addEventListener('click', function (e) {
+    var b = e.target.closest('.pad-btn');
+    if (!b) return;
+    place(Number(b.getAttribute('data-num')));
+  });
+  $('t-undo').addEventListener('click', undo);
+  $('t-erase').addEventListener('click', erase);
+  $('t-hint').addEventListener('click', hint);
+  $('t-note').addEventListener('click', function () {
+    G.noteMode = !G.noteMode;
+    this.classList.toggle('on', G.noteMode);
+    $('tip-note').classList.toggle('hide', !G.noteMode);
+    toast(G.noteMode ? '已开启笔记模式' : '已关闭笔记模式');
+  });
+  $('btn-pause').addEventListener('click', pauseGame);
+  $('btn-back').addEventListener('click', function () {
+    if (G.finished) { renderLevels(G.diff); show('screen-levels'); return; }
+    pauseGame();
+  });
+
+  // 暂停弹窗
+  $('btn-resume').addEventListener('click', resumeGame);
+  $('btn-replay').addEventListener('click', function () {
+    $('ov-pause').classList.add('hide');
+    startGame(G.diff, G.lv);
+  });
+  $('btn-quit').addEventListener('click', function () {
+    stopTimer();
+    $('ov-pause').classList.add('hide');
+    renderLevels(G.diff);
+    show('screen-levels');
+  });
+
+  // 通关弹窗
+  $('btn-next').addEventListener('click', function () {
+    $('ov-win').classList.add('hide');
+    startGame(G.diff, Math.min(G.lv + 1, PER_LEVEL));
+  });
+  $('btn-again').addEventListener('click', function () {
+    $('ov-win').classList.add('hide');
+    startGame(G.diff, G.lv);
+  });
+  $('btn-tolist').addEventListener('click', function () {
+    $('ov-win').classList.add('hide');
+    renderLevels(G.diff);
+    show('screen-levels');
+  });
+
+  // 键盘
+  document.addEventListener('keydown', function (e) {
+    if ($('screen-game').classList.contains('hide')) return;
+    var k = e.key;
+    if (k === 'Escape') {
+      if (!$('ov-win').classList.contains('hide')) return;
+      if (G.paused) resumeGame(); else pauseGame();
+      return;
+    }
+    if (!$('ov-pause').classList.contains('hide') || !$('ov-win').classList.contains('hide')) return;
+    if (k >= '1' && k <= '9') { place(Number(k)); e.preventDefault(); return; }
+    if (k === 'Backspace' || k === 'Delete' || k === '0') { erase(); e.preventDefault(); return; }
+    if (k === ' ') {
+      G.noteMode = !G.noteMode;
+      $('t-note').classList.toggle('on', G.noteMode);
+      $('tip-note').classList.toggle('hide', !G.noteMode);
+      e.preventDefault(); return;
+    }
+    if (k === 'z' && (e.ctrlKey || e.metaKey)) { undo(); e.preventDefault(); return; }
+    if (k === 'h' || k === 'H') { hint(); return; }
+    var i = G.selected;
+    if (i < 0) i = 0;
+    var r = Math.floor(i / 9), c = i % 9;
+    if (k === 'ArrowUp') { r = (r + 8) % 9; selectCell(r * 9 + c); e.preventDefault(); }
+    else if (k === 'ArrowDown') { r = (r + 1) % 9; selectCell(r * 9 + c); e.preventDefault(); }
+    else if (k === 'ArrowLeft') { c = (c + 8) % 9; selectCell(r * 9 + c); e.preventDefault(); }
+    else if (k === 'ArrowRight') { c = (c + 1) % 9; selectCell(r * 9 + c); e.preventDefault(); }
+  });
+
+  // 切走自动暂停
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden && !$('screen-game').classList.contains('hide') && !G.finished && !G.paused) {
+      pauseGame();
+    }
+  });
+  window.addEventListener('blur', function () {
+    if (!$('screen-game').classList.contains('hide') && !G.finished && !G.paused &&
+        $('ov-win').classList.contains('hide')) {
+      pauseGame();
+    }
+  });
+
+  /* ================= 启动 ================= */
+  loadProgress();
+  buildPad();
+  renderHome();
+  show('screen-home');
+})();
+</script>
+</body>
+</html>
