@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>数字九宫格 · 数独闯关</title>
+<style>
+:root{
+  --ink:#2D3436; --ink2:#636E72; --ink3:#9AA4AB;
+  --line:#DDE1E6; --line2:#B9C0C7;
+  --bg:#F5F6FA; --panel:#FFFFFF;
+  --brand:#0D6EA8; --brand-soft:#E7F0F7;
+  --accent:#E17055; --ok:#00B894; --danger:#D63031;
+  --peer:#EDF0F4; --same:#D8E7F3; --sel:#BFDCF0;
+  --radius:8px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{overflow-x:hidden}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  font-size:14px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+button{font-family:inherit;font-size:inherit;color:inherit;cursor:pointer;border:none;background:none}
+.hide{display:none !important}
+
+/* ---------- 通用 ---------- */
+.screen{max-width:900px;margin:0 auto;padding:20px 16px 40px;min-height:100vh}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:9px 16px;border:1px solid var(--line2);border-radius:var(--radius);
+  background:#fff;color:var(--ink);transition:background .14s,border-color .14s;
+}
+.btn:hover{background:#F2F4F7;border-color:var(--ink3)}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--ink);border-color:var(--ink);color:#fff}
+.btn.primary:hover{background:#3D4548}
+.btn.ghost{border-color:transparent;color:var(--ink2)}
+.btn.ghost:hover{background:#EBEEF2}
+.btn.sm{padding:6px 11px;font-size:13px}
+
+/* ---------- 首页 ---------- */
+.home-head{padding:26px 0 22px;border-bottom:1px solid var(--line);margin-bottom:24px}
+.home-head h1{margin:0 0 8px;font-size:26px;letter-spacing:1px;font-weight:700}
+.home-head h1 .dot{color:var(--accent)}
+.home-head p{margin:0;color:var(--ink2)}
+.home-meta{display:flex;gap:22px;margin-top:16px;flex-wrap:wrap;font-size:13px;color:var(--ink2)}
+.home-meta b{color:var(--ink);font-weight:600}
+
+.diff-list{display:grid;gap:12px}
+.diff-card{
+  display:grid;grid-template-columns:66px 1fr auto;align-items:center;gap:16px;
+  padding:16px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  cursor:pointer;transition:border-color .14s,background .14s;text-align:left;width:100%;
+}
+.diff-card:hover{border-color:var(--line2);background:#FCFDFE}
+.diff-badge{
+  width:66px;height:66px;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;
+  font-size:19px;font-weight:700;letter-spacing:1px;color:#fff;
+}
+.diff-info h3{margin:0 0 4px;font-size:16px}
+.diff-info p{margin:0 0 8px;color:var(--ink2);font-size:13px}
+.diff-bar{height:5px;background:#E9ECF0;border-radius:3px;overflow:hidden;max-width:260px}
+.diff-bar i{display:block;height:100%;background:var(--ok);transition:width .3s}
+.diff-stat{text-align:right;font-size:13px;color:var(--ink2);white-space:nowrap}
+.diff-stat b{display:block;font-size:20px;color:var(--ink);font-weight:700;line-height:1.2}
+.rules{margin-top:28px;padding-top:18px;border-top:1px solid var(--line);color:var(--ink2);font-size:13px}
+.rules h4{margin:0 0 8px;color:var(--ink);font-size:14px}
+.rules ul{margin:0 0 10px;padding-left:20px}
+.rules li{margin-bottom:4px}
+.kbd{display:inline-block;padding:1px 6px;border:1px solid var(--line2);border-radius:4px;background:#fff;font-size:12px;font-family:Consolas,monospace}
+.foot{margin-top:24px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+
+/* ---------- 关卡选择 ---------- */
+.bar{display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.bar h2{margin:0;font-size:18px;flex:1}
+.bar .sub{color:var(--ink2);font-size:13px}
+.lv-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+@media(max-width:520px){.lv-grid{grid-template-columns:repeat(4,1fr)}}
+.lv{
+  position:relative;aspect-ratio:1/1;border:1px solid var(--line);border-radius:var(--radius);
+  background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  font-size:17px;font-weight:600;color:var(--ink);transition:border-color .14s,background .14s;
+}
+.lv:hover:not(.locked){border-color:var(--brand);background:var(--brand-soft)}
+.lv.locked{color:var(--ink3);background:#F2F4F7;cursor:not-allowed;border-color:#E6E9EC}
+.lv.done{background:#F1FAF7;border-color:#BEE5D8}
+.lv .stars{display:flex;gap:1px;font-size:9px;color:#E6B422;height:11px;line-height:1}
+.lv .stars span{opacity:.22}
+.lv .stars span.on{opacity:1}
+.lv .t{font-size:10px;color:var(--ink3);font-weight:400}
+.legend{margin-top:18px;color:var(--ink2);font-size:12px;display:flex;gap:18px;flex-wrap:wrap}
+
+/* ---------- 游戏 ---------- */
+.game-top{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.stat{
+  display:flex;flex-direction:column;align-items:flex-start;padding:5px 12px;min-width:74px;
+  border:1px solid var(--line);border-radius:var(--radius);background:#fff;
+}
+.stat em{font-style:normal;font-size:11px;color:var(--ink3);letter-spacing:.5px}
+.stat b{font-size:15px;font-variant-numeric:tabular-nums}
+.stat.warn b{color:var(--danger)}
+.game-top .spacer{flex:1}
+
+.game-body{display:flex;gap:22px;align-items:flex-start;justify-content:center;flex-wrap:wrap}
+.board-wrap{width:min(93vw,510px)}
+.board{
+  --cs:calc(min(93vw,510px)/9);
+  width:100%;aspect-ratio:1/1;display:grid;grid-template-columns:repeat(9,1fr);
+  border:2px solid var(--ink);border-radius:3px;overflow:hidden;background:#fff;
+  user-select:none;
+}
+.cell{
+  position:relative;display:flex;align-items:center;justify-content:center;
+  border-right:1px solid var(--line);border-bottom:1px solid var(--line);
+  background:#fff;color:var(--brand);font-weight:600;
+  font-size:calc(var(--cs)*.55);cursor:pointer;transition:background .1s;
+}
+.cell.br{border-right:2px solid var(--ink)}
+.cell.bb{border-bottom:2px solid var(--ink)}
+.cell:nth-child(9n){border-right:none}
+.cell:nth-child(n+73){border-bottom:none}
+.cell.given{background:#F7F8FA;color:var(--ink);font-weight:700}
+.cell.peer{background:var(--peer)}
+.cell.same{background:var(--same)}
+.cell.hinted{background:#E2F6EE;color:#0A8F6C}
+.cell.wrong{background:#FBE0DE;color:var(--danger)}
+.cell.sel{background:var(--sel);box-shadow:inset 0 0 0 2px var(--brand)}
+.cell .val{pointer-events:none}
+.cell .notes{
+  position:absolute;inset:3px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);
+  font-size:calc(var(--cs)*.25);font-weight:400;color:#8C979F;pointer-events:none;line-height:1;
+}
+.cell .notes span{display:flex;align-items:center;justify-content:center}
+.cell.wrong .notes,.cell.sel .notes{color:inherit}
+.board.done .cell{animation:pop .32s ease}
+@keyframes pop{0%{transform:scale(1)}45%{transform:scale(.86)}100%{transform:scale(1)}}
+
+.panel{width:min(93vw,300px);display:flex;flex-direction:column;gap:14px}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pad-btn{
+  position:relative;height:56px;border:1px solid var(--line2);border-radius:var(--radius);background:#fff;
+  font-size:22px;font-weight:600;color:var(--brand);transition:background .12s,border-color .12s;
+}
+.pad-btn:hover{background:var(--brand-soft);border-color:var(--brand)}
+.pad-btn:active{transform:translateY(1px)}
+.pad-btn .c{position:absolute;right:5px;bottom:3px;font-size:10px;font-weight:400;color:var(--ink3)}
+.pad-btn.zero{color:var(--ink3);border-color:var(--line);background:#F7F8FA}
+.pad-btn.zero .c{color:var(--ok)}
+.tools{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.tool{
+  height:42px;border:1px solid var(--line2);border-radius:var(--radius);background:#fff;
+  display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;transition:background .12s,border-color .12s;
+}
+.tool:hover{background:#F2F4F7}
+.tool.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.tool:disabled{color:var(--ink3);border-color:var(--line);background:#F7F8FA;cursor:not-allowed}
+.tool svg{width:15px;height:15px;flex:none}
+.hint-left{font-size:11px;color:var(--ink3)}
+.tips{font-size:12px;color:var(--ink2);border-top:1px solid var(--line);padding-top:12px}
+.tips p{margin:0 0 5px}
+
+/* ---------- 遮罩 ---------- */
+.overlay{
+  position:fixed;inset:0;background:rgba(45,52,54,.72);display:flex;align-items:center;justify-content:center;
+  padding:20px;z-index:50;backdrop-filter:blur(2px);
+}
+.modal{
+  width:min(100%,380px);background:#fff;border-radius:10px;padding:26px 24px;text-align:center;
+  box-shadow:0 12px 40px rgba(0,0,0,.18);
+}
+.modal h2{margin:0 0 6px;font-size:21px}
+.modal .sub{color:var(--ink2);margin:0 0 18px;font-size:13px}
+.modal .big-stars{font-size:34px;letter-spacing:6px;color:#E6B422;margin:6px 0 14px;height:42px}
+.modal .big-stars span{opacity:.2}
+.modal .big-stars span.on{opacity:1}
+.result-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
+.result-grid div{border:1px solid var(--line);border-radius:var(--radius);padding:9px 4px}
+.result-grid em{font-style:normal;display:block;font-size:11px;color:var(--ink3);margin-bottom:2px}
+.result-grid b{font-size:17px;font-variant-numeric:tabular-nums}
+.modal-actions{display:flex;flex-direction:column;gap:9px}
+.modal-actions .row{display:flex;gap:9px}
+.modal-actions .row .btn{flex:1}
+.toast{
+  position:fixed;left:50%;bottom:46px;transform:translateX(-50%) translateY(14px);
+  background:rgba(45,52,54,.93);color:#fff;padding:9px 18px;border-radius:20px;font-size:13px;
+  opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:80;white-space:nowrap;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media(max-width:700px){
+  .game-body{gap:16px}
+  .panel{width:min(93vw,510px)}
+  .pad{grid-template-columns:repeat(9,1fr);gap:5px}
+  .pad-btn{height:46px;font-size:18px}
+  .pad-btn .c{display:none}
+  .tools{grid-template-columns:repeat(4,1fr);gap:6px}
+  .tool{font-size:12px;height:40px}
+  .stat{min-width:62px;padding:4px 9px}
+  .screen{padding:14px 12px 30px}
+}
+</style>
+</head>
+<body>
+
+<!-- ================= 首页 ================= -->
+<section class="screen" id="screen-home">
+  <div class="home-head">
+    <h1>数字九宫格<span class="dot">.</span></h1>
+    <p>经典 9×9 数独闯关 · 每行、每列、每个 3×3 宫内填入 1-9 且不重复</p>
+    <div class="home-meta">
+      <div>总关卡 <b id="m-total">80</b></div>
+      <div>已通关 <b id="m-done">0</b></div>
+      <div>已获星 <b id="m-stars">0</b></div>
+      <div>难度 <b>4 级</b></div>
+    </div>
+  </div>
+
+  <div class="diff-list" id="diff-list"></div>
+
+  <div class="rules">
+    <h4>玩法与规则</h4>
+    <ul>
+      <li>在 9×9 棋盘中填入数字 1-9，使每行、每列、每个 3×3 宫内的数字都不重复。</li>
+      <li>题目给定数字为黑色加粗，不可修改；你填写的数字为蓝色。</li>
+      <li>填入与答案不符的数字会立即标红并计入错误次数。</li>
+      <li>「笔记」模式可在格内记录候选数，落子后会自动清理同行列宫的对应候选。</li>
+      <li>每关有 3 次提示；零错误且未使用提示可获得三星。</li>
+      <li>关卡按顺序解锁，通过当前关即开启下一关；进度自动保存在本机浏览器。</li>
+      <li>难度由「提示数」与「必须试探的格数」共同决定：简单 / 中级 全程可推理完成，高级 / 地狱 则需要假设与回溯。</li>
+    </ul>
+    <h4>键盘操作（电脑端）</h4>
+    <div>
+      <span class="kbd">↑↓←→</span> 移动光标　<span class="kbd">1-9</span> 填数　
+      <span class="kbd">Del</span> 擦除　<span class="kbd">空格</span> 切换笔记　
+      <span class="kbd">Ctrl+Z</span> 撤销　<span class="kbd">H</span> 提示　<span class="kbd">Esc</span> 暂停
+    </div>
+  </div>
+
+  <div class="foot">
+    <button class="btn ghost sm" id="btn-reset">重置全部进度</button>
+    <span style="color:var(--ink3);font-size:12px">题目均为唯一解，由算法生成并校验</span>
+  </div>
+</section>
+
+<!-- ================= 关卡选择 ================= -->
+<section class="screen hide" id="screen-levels">
+  <div class="bar">
+    <button class="btn sm ghost" id="btn-lv-back">← 返回</button>
+    <h2 id="lv-title">简单模式</h2>
+    <span class="sub" id="lv-sub"></span>
+  </div>
+  <div class="lv-grid" id="lv-grid"></div>
+  <div class="legend">
+    <span>已通关关卡显示获得星数</span>
+    <span>灰色为未解锁</span>
+    <span style="color:var(--ink3)">提示数越少，难度越高</span>
+  </div>
+</section>
+
+<!-- ================= 游戏 ================= -->
+<section class="screen hide" id="screen-game">
+  <div class="game-top">
+    <button class="btn sm ghost" id="btn-back">←</button>
+    <div class="stat"><em>关卡</em><b id="g-level">简单 1</b></div>
+    <div class="stat"><em>用时</em><b id="g-time">00:00</b></div>
+    <div class="stat" id="g-mistake-stat"><em>错误</em><b id="g-mistake">0</b></div>
+    <div class="stat"><em>提示</em><b id="g-hint">3</b></div>
+    <div class="spacer"></div>
+    <button class="btn sm ghost" id="btn-pause">暂停</button>
+  </div>
+
+  <div class="game-body">
+    <div class="board-wrap">
+      <div class="board" id="board"></div>
+    </div>
+
+    <div class="panel">
+      <div class="pad" id="pad"></div>
+      <div class="tools">
+        <button class="tool" id="t-undo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 5 5v0a5 5 0 0 1-5 5H9"/></svg>
+          <span class="lbl">撤销</span>
+        </button>
+        <button class="tool" id="t-erase">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"/><path d="m14.5 5.5 4 4L9 19H4v-5z"/></svg>
+          <span class="lbl">擦除</span>
+        </button>
+        <button class="tool" id="t-note">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+          <span class="lbl">笔记</span>
+        </button>
+        <button class="tool" id="t-hint">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg>
+          <span class="lbl">提示</span>
+        </button>
+      </div>
+      <div class="tips">
+        <p>点击格子选中，再点数字填入。蓝字为填入值，黑字为题目给定。</p>
+        <p id="tip-note" class="hide" style="color:var(--accent)">笔记模式：填入的数字将作为候选记录。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 遮罩 ================= -->
+<div class="overlay hide" id="ov-pause">
+  <div class="modal">
+    <h2>已暂停</h2>
+    <p class="sub" id="pause-sub">休息一下，进度会自动保留</p>
+    <div class="result-grid">
+      <div><em>关卡</em><b id="p-level">—</b></div>
+      <div><em>用时</em><b id="p-time">00:00</b></div>
+      <div><em>错误</em><b id="p-mistake">0</b></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn primary" id="btn-resume">继续游戏</button>
+      <div class="row">
+        <button class="btn" id="btn-replay">重玩本关</button>
+        <button class="btn" id="btn-quit">关卡列表</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay hide" id="ov-win">
+  <div class="modal">
+    <h2>通关成功</h2>
+    <p class="sub" id="win-sub">简单 · 第 1 关</p>
+    <div class="big-stars" id="win-stars"><span>★</span><span>★</span><span>★</span></div>
+    <div class="result-grid">
+      <div><em>用时</em><b id="w-time">00:00</b></div>
+      <div><em>错误</em><b id="w-mistake">0</b></div>
+      <div><em>提示</em><b id="w-hint">0</b></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn primary" id="btn-next">下一关</button>
+      <div class="row">
+        <button class="btn" id="btn-again">再玩一次</button>
+        <button class="btn" id="btn-tolist">关卡列表</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ================= 数据 ================= */
+  /* 题库：4 难度 × 20 关，p = 题目(点为空)，s = 唯一解 */
+  var PUZZLES = JSON.parse(`{"easy":[{"d":"easy","l":1,"p":".54781...76.32.51.921..4.78..28....7.3.2.7..58764...3.29..4.853.45...72..83.72149","s":"354781962768329514921654378512863497439217685876495231297146853145938726683572149"},{"d":"easy","l":2,"p":"469.71.....18.329.2...4.7..9.638..425.46.2138..8...9.66.27.5.....591.4271974.865.","s":"469271385751863294283549761916387542574692138328154976642735819835916427197428653"},{"d":"easy","l":3,"p":".65.....1.12.59...738.4.965..94.5..3.43.8.592.579.6184.26.143..5..89.4263....2..8","s":"965378241412659837738241965189425673643187592257936184826714359571893426394562718"},{"d":"easy","l":4,"p":"...3.2...26.8.54..93.6....75...3...87.3481.568.97563...72.4853..91527864....6.729","s":"184372695267895413935614287546239178723481956819756342672948531391527864458163729"},{"d":"easy","l":5,"p":"....5..12..96..7.551.472.8.96.5.48.3.8.7.3..63..26.49149.8362..625.47.38...1..9.4","s":"748359612239681745516472389962514873184793526357268491491836257625947138873125964"},{"d":"easy","l":6,"p":"8.17326..9.48.1..7273649815..5.1...4..69751.83.......253..8.....4..97.8.1.85264.3","s":"851732649964851327273649815785213964426975138319468752537184296642397581198526473"},{"d":"easy","l":7,"p":"....4..2..83762..56...98.3421.679.5...9.34.783.4..561.7.5.1.3..1.2983....3625..41","s":"957341826483762195621598734218679453569134278374825619795416382142983567836257941"},{"d":"easy","l":8,"p":"..928..574...13...67.59...253682.741.94..7.838..341..99..162.7..6.43...528....6.4","s":"319286457452713896678594132536829741194657283827341569945162378761438925283975614"},{"d":"easy","l":9,"p":"75.318..2.....9.47.967.....4..6...399...82..6618..3.253.9..6278.6.92.35.5.2834.91","s":"754318962183269547296745183425671839937582416618493725349156278861927354572834691"},{"d":"easy","l":10,"p":"34.6...1..27..863.18...3.27.3481.96....736...5.1492.....8.6..75.5.27...8273.84196","s":"345627819927158634186943527734815962892736451561492783418369275659271348273584196"},{"d":"easy","l":11,"p":"63..97.2.59.38...68.25.6.91..5.3..679162...3..2..5418.24...567.3.87.9...1.742....","s":"634197825591382746872546391485931267916278534723654189249815673358769412167423958"},{"d":"easy","l":12,"p":".21.7.63........586...84.7.9.2.4.71.5.476..9.17395.4...4.12.8672.86....37...38921","s":"821579634497316258635284179962843715584761392173952486349125867218697543756438921"},{"d":"easy","l":13,"p":".3281...66.4..3.12.87264935.197..5.827..9...14...3..97.9.4..18.721..9......651.2.","s":"932815476654973812187264935319742568278596341465138297596427183721389654843651729"},{"d":"easy","l":14,"p":"9671.5483.2.93...7.1...8.2.24....5..6..45239..9.87..4...239.756.3958..1.15.....39","s":"967125483825934167314768925243619578678452391591873642482391756739586214156247839"},{"d":"easy","l":15,"p":"..2.6.71.9.17....558731264..5.19..232968..57.4.35..9.6....5.8.7..54.9..267.....5.","s":"342965718961748235587312649758196423296834571413527986124653897835479162679281354"},{"d":"easy","l":16,"p":"9.3485.277..3..5.8.5.61.93.349......276.5.491..5..6.73697.38..5...764...4.....76.","s":"913485627764329518852617934349172856276853491185946273697238145521764389438591762"},{"d":"easy","l":17,"p":".29735..6.7....34.638.4.79..156.34.8.4.59..2.3.24.....25...49....4...5.1.673.9284","s":"429735816571986342638142795915623478746598123382471659253814967894267531167359284"},{"d":"easy","l":18,"p":"2673.91....1.6..97..4..76.2..6893....9.5.4826418..69531....83..832..5....4..3.2.5","s":"267359148381462597954187632526893471793514826418276953175928364832645719649731285"},{"d":"easy","l":19,"p":"..2..674..3.54...24187..6..8..9......7..219...69.582.......3..7783.95126.51867.39","s":"592186743637549812418732695825974361374621958169358274946213587783495126251867439"},{"d":"easy","l":20,"p":"6.....9.21936..8.54253897.1.3.4..28658.........18..3..95.....73.6...7519...94.628","s":"678514932193672845425389761739451286586723194241896357952168473864237519317945628"}],"medium":[{"d":"medium","l":1,"p":"71..329....58...2.8.2954......29.5.85....36.998.4.5.....75.9816...1.6..31..34...2","s":"714632985695817324832954167476291538521783649983465271347529816258176493169348752"},{"d":"medium","l":2,"p":"...39..41.59..1..71..5...2646.8.97.59..2.78..8...5.1.2.4.7....96.7....535..96..78","s":"786392541259641387134578926462819735915237864873456192348725619697184253521963478"},{"d":"medium","l":3,"p":"7.6..4.....2..5.6...46.8.7....3..7.667.94231..1..56.242415..8..3.84.71....7...6..","s":"736294581982175463154638279429381756675942318813756924241569837368427195597813642"},{"d":"medium","l":4,"p":"...71.4..918.45.27.759....1.2...179.3...7......753...8293...8168...9......186..34","s":"632718459918345627475926381524681793389274165167539248293457816846193572751862934"},{"d":"medium","l":5,"p":"..6.457.1..13..2.448...253.56....3.8.7.13.495..45.9.72.9..5782...5.....7........3","s":"236945781951378264487612539569724318872136495314589672193457826625893147748261953"},{"d":"medium","l":6,"p":"..1..29.373964..2.8521..7.4..83..2.5..7.2..19.26....3...321...8.84.5..96.......7.","s":"461572983739648521852139764198367245347825619526491837973216458284753196615984372"},{"d":"medium","l":7,"p":"879...1.2..28914..614..29.8...2...6..9.6...4...715..299..7.......8..5...54..862.7","s":"879463152352891476614572938183249765295637841467158329926714583738925614541386297"},{"d":"medium","l":8,"p":"..5....3.8....35.1936521487.2.61...4.....2...1.745...34...3.1.8...2.......91.5742","s":"215847639874963521936521487523619874648372915197458263452736198781294356369185742"},{"d":"medium","l":9,"p":"........2.62.984....4256.19927.8........6.5..51...289..89435..12..8...64..1...35.","s":"195374682762198435834256719927583146348961527516742893689435271253817964471629358"},{"d":"medium","l":10,"p":"..6..7.5.2...619.3.315.2.6.56492....3.....6..81..43....7.8.62...257...3...3..47.1","s":"946387152258461973731592468564928317392175684817643529179836245425719836683254791"},{"d":"medium","l":11,"p":"..7....2.328..7.616...3..5.1..3.42..4.5...679..27....495..827...1..53...2..1...43","s":"547916328328547961691238457179364285435821679862795134953482716714653892286179543"},{"d":"medium","l":12,"p":"2...93.6.3.58.....6..4......6.13..57.5.97.2864.268.19.....679.8.3........2..183..","s":"284793561315826749697451832869132457153974286472685193541367928738249615926518374"},{"d":"medium","l":13,"p":"8..4..916.....6.373.67.1.541.76.8...9...17...6.4....717.8....6..19.64.2..6.5.....","s":"875423916241956837396781254137648592952317648684295371728139465519864723463572189"},{"d":"medium","l":14,"p":"...9......5.6124...12738..65....43.9347..18.29.1....4....327.8.......79487....1..","s":"683945271759612438412738956568274319347591862921863547194327685235186794876459123"},{"d":"medium","l":15,"p":"....2..74...3.6...461..5....5..728..64.5.1..271..6.45.83..1.2..2..6...9.....5836.","s":"583129674927346581461785923359472816648591732712863459836917245275634198194258367"},{"d":"medium","l":16,"p":"791.3...6.649..1.3......57.4.752.391...7....86.9.....73..15.........28..21.8.7..4","s":"791235486564978123823614579487526391152793648639481257348159762976342815215867934"},{"d":"medium","l":17,"p":"...87.2..4...1.59.3..49.6...83..4.5.5..3......9.75...3.6.2.......21.97.59.45..812","s":"619875234427613598358492671783924156541368927296751483165287349832149765974536812"},{"d":"medium","l":18,"p":"9...735813..5.....5718....3..3...9..7.21.9.6.86.73....4.83...156.....72.....4..3.","s":"926473581384591276571862493153286947742159368869734152498327615635918724217645839"},{"d":"medium","l":19,"p":"8.56.......3.5.7.86.4.....9..7.162.3.3.5.4...2497.3..5...14.5..4....2....9.86...4","s":"875639421923451768614278359587916243136524987249783615368147592451392876792865134"},{"d":"medium","l":20,"p":"..4.92..3..9.16..5...5.81..4..62.93.2.....6.7.6.1.3........7.5..95.....16.7351..2","s":"514792863839416275726538149471625938253849617968173524142987356395264781687351492"}],"hard":[{"d":"hard","l":1,"p":"7...3.5....9...74....14..396........9..67....1.23...6..1.2.58..2.7..3...5.3.14..2","s":"741932586329586741865147239638429157954671328172358964416295873297863415583714692"},{"d":"hard","l":2,"p":"3.8...4..1..4..37.7463..528.3.82...48...9.2......7......593.....89...6.5.1....8..","s":"398257416152486379746319528931825764867194253524673981675938142289741635413562897"},{"d":"hard","l":3,"p":"..43.6..52..7.......9.5174..5......8......5..4.358.....42.1....7.86.5.12...82..3.","s":"174396285235748169869251743651472398987163524423589671342917856798635412516824937"},{"d":"hard","l":4,"p":"426..3..9...14.......2...739.4.7..2123..1.9...8.4.......2........183.65.....2..84","s":"426753819378149265519286473964378521237615948185492736842561397791834652653927184"},{"d":"hard","l":5,"p":"1.749.......286.......7...5...6..5..6...3.1.2.5......34...6..5.39.12.68..6.95..4.","s":"127495836539286714846371925713642598684539172952718463471863259395124687268957341"},{"d":"hard","l":6,"p":".6.3.7..5....4....5.82......26.7.9...51..43...836..2....4....36....351.....16.4..","s":"269317845317548692548296713426873951751924368983651274194782536672435189835169427"},{"d":"hard","l":7,"p":".9..135..6.1....83..2.9....9.....6..5....7819.7....4.5..528.....6..39.57...5.41..","s":"497813526651742983382695741948351672523467819176928435715286394864139257239574168"},{"d":"hard","l":8,"p":"...9....54....6.....9...3....7..3.1231..7.89668......394.3.2.....81.7.3...34...5.","s":"836921745475836129129745368597683412312574896684219573941352687258167934763498251"},{"d":"hard","l":9,"p":"...6..5..9.64......8...7..9..17..4.2...26..134.....68........2....923.563.2.46.78","s":"273698541956412837184357269631785492895264713427139685569871324748923156312546978"},{"d":"hard","l":10,"p":"1.4.2....7..1...23.2.9.6...43..9....5...1.79...6..7...6...5....2437...59..9.....2","s":"194823567768145923325976481437692815582314796916587234671259348243768159859431672"},{"d":"hard","l":11,"p":"5.1.47...2........3.481...5.....52.1....6..7.7.....5.........59.5.7.1..68265...17","s":"591347682278956143364812795689475231135268974742139568417623859953781426826594317"},{"d":"hard","l":12,"p":"43......7......1.....8.5.....1.837.6326..1...8.92...1..1469...22.57..8...........","s":"438129657952367148167845293541983726326471985879256314714698532295734861683512479"},{"d":"hard","l":13,"p":"........7.85..74...4..86..1....3..7...92.51..8..4....53.....7....6.13.2.41.9.8..3","s":"963142587185397462742586391254831976639275148871469235328654719596713824417928653"},{"d":"hard","l":14,"p":"..7.9...35....2..66....7..1....197.........352.1.7.9.49..8..2....6.21.59..3......","s":"147695823598132476632487591364519782879246135251378964915863247486721359723954618"},{"d":"hard","l":15,"p":"...97..2.......3...681...7.3...19...6.5....12.9....73....465....1.3...4..3....587","s":"153974628974826351268153479327519864645738912891642735782465193519387246436291587"},{"d":"hard","l":16,"p":".97..8.16..1....7..453.....5.4..6.8...31.9...8..4.2..........9..52.976.....51....","s":"397248516281965473645371928524736189763189254819452367138624795452897631976513842"},{"d":"hard","l":17,"p":"...317..88......3..31.6...2...935..4....8......34..67....5....6.95.......12.73.8.","s":"529317468846259731731864952267935814154786293983421675378592146695148327412673589"},{"d":"hard","l":18,"p":"8.......1.9...6..3..4....8.67...91.8..8.53...91..7..2.1.75.4..9...2...3.....8....","s":"832795641591846273764312985673429158248153796915678324127534869489261537356987412"},{"d":"hard","l":19,"p":"..5.....2..1...86........3..16...2..3.....5....41.63...795.....4..6.1....587421..","s":"865913472931274865742865931516387249387429516294156387179538624423691758658742193"},{"d":"hard","l":20,"p":"......4.....7....2..7.54.63249..5..7........58..3...9..3.5.6..9....7..3..6.4.92..","s":"526893471384761952917254863249615387673948125851327694132586749498172536765439218"}],"hell":[{"d":"hell","l":1,"p":"..58.764...........4.326.......4.37.3.7..5...28.....5.7...........1.....5....8.12","s":"925817643673594281841326597156942378397685124284731956718253469462179835539468712"},{"d":"hell","l":2,"p":"3.......4...23.......4..7.5.5...4.9..6.98....23......6.4...82....8.2.......7..8.3","s":"315897624476235918982416735857364192164982357239571486643158279798623541521749863"},{"d":"hell","l":3,"p":"..........1..5......8.4..6...9.....3.43.8.5...5.9..1...26..4......89.4.63....2..8","s":"965378241412659837738241965189425673643187592257936184826714359571893426394562718"},{"d":"hell","l":4,"p":"...56..3.839..2....5.....1....651.....4....26...3...........35..26....97...18....","s":"241569738839712645657843912982651473314978526765324189478296351126435897593187264"},{"d":"hell","l":5,"p":"..4.7..93..1.2.5.6.5.3.....6.......44..5..3.....2......3....2.8.7....9.......9.1.","s":"264175893391428576857396421625913784419587362783264159936751248178642935542839617"},{"d":"hell","l":6,"p":"6...3.8..9..1......2.6..1.5...3..5.67.......3..5.1......3.78.......9...4..14...7.","s":"614735829958124637327689145182347596769852413435916782243578961876291354591463278"},{"d":"hell","l":7,"p":"15...9.......6.7.....4........6......2..57....3..1..58.46...2.35..9...4..1.....9.","s":"152789364394162785867435921485693172621857439739214658946578213573921846218346597"},{"d":"hell","l":8,"p":".97......5...3.6..3...8...5.6.8...5..2.6..3.41....9...7.8..2..................592","s":"297156843581234679346987125463821957829675314175349268718592436952463781634718592"},{"d":"hell","l":9,"p":"..6..34...7..........91.......5......69.4.8......6.352......214..8.7.9..9....1...","s":"196753428875624193243918567321587649569342871784169352637895214418276935952431786"},{"d":"hell","l":10,"p":".3....49...87..5...9...2.7.3.567.......5......4.....56.1...9...62.....8.....4....","s":"237156498468793512591482673385674129976521834142938756713869245624315987859247361"},{"d":"hell","l":11,"p":"3....5....5..9..2.7.12.3.........76...5....13....6...986.....4....8........14...5","s":"326415978458697321791283456139528764685974213247361589863759142514832697972146835"},{"d":"hell","l":12,"p":".7...3.8....5.....2.9.8.1....76......5.41.....6...5.1.6....83...1....7....2..1...","s":"576143289381592476249786135127639548958417623463825917694278351815364792732951864"},{"d":"hell","l":13,"p":"6....1.....8..26.9.7.....3....9837........52.......3.4...34...5....7....19......6","s":"632591847418732659975864132254983761369417528781625394827346915546179283193258476"},{"d":"hell","l":14,"p":"...1...6.9..8..7..4.7....83.9....6..7.2....5..8.7...........5...1...3.....32.8.4.","s":"358127469961834725427569183594382617732916854186745392249671538815493276673258941"},{"d":"hell","l":15,"p":"3....1..6....7..9.9..4.57.8....9.1..85..3...9....8......8......57...6....32......","s":"387921546465378291921465738243697185856132479719584362198243657574816923632759814"},{"d":"hell","l":16,"p":"1.2...4......539.....28..7.....2...6.56..........3...8.673..5....96..7....5......","s":"182769435674153982593284671938427156256891347741536298467318529829645713315972864"},{"d":"hell","l":17,"p":"6..5............59.83.6....2....6..8....97.....43....7......23.4.8..1....7..2..9.","s":"649572183712843659583169472237456918851297346964318527196785234428931765375624891"},{"d":"hell","l":18,"p":"..3..6...2......7......83...2..3.8..791........6.....5...4....85.8..7..3......2.7","s":"143276589289354176657918324425739861791865432836142795372491658518627943964583217"},{"d":"hell","l":19,"p":"..4.....193.6......28.5..........4.5.8...3...7.62.........1.3.4.....7.2.47...2...","s":"654798231937621548128354697293176485581943762746285913862519374315467829479832156"},{"d":"hell","l":20,"p":"..397...662...........6.84...8...5.....8.1.........1.9..5.3..........9....7..6.14","s":"183974256624518793579362841418793562956821437732645189245139678361487925897256314"}]}`);
+
+  var DIFFS = [
+    { key: 'easy',   name: '简单', color: '#00B894', desc: '提示充足，全程可凭推理落子', range: '46 → 41 个提示数' },
+    { key: 'medium', name: '中级', color: '#0D6EA8', desc: '提示减少，需要逐格推导排除', range: '38 → 33 个提示数' },
+    { key: 'hard',   name: '高级', color: '#E17055', desc: '必须试探与回溯，考验耐心',   range: '31 → 27 个提示数' },
+    { key: 'hell',   name: '地狱', color: '#D63031', desc: '提示极少，反复推演才能推进', range: '24 → 22 个提示数' }
+  ];
+  var PER_LEVEL = 20;
+  var KEY = 'sudoku9.progress.v1';
+  var HINTS = 3;
+
+  var progress = {};
+  ['easy', 'medium', 'hard', 'hell'].forEach(function (k) {
+    progress[k] = { u: 1, done: {} };
+  });
+
+  /* ================= 工具 ================= */
+  var $ = function (id) { return document.getElementById(id); };
+
+  function fmtTime(sec) {
+    sec = Math.max(0, Math.floor(sec));
+    var m = Math.floor(sec / 60), s = sec % 60;
+    return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+  }
+  function boxOf(i) { return Math.floor(Math.floor(i / 9) / 3) * 3 + Math.floor((i % 9) / 3); }
+  function diffOf(key) {
+    for (var i = 0; i < DIFFS.length; i++) if (DIFFS[i].key === key) return DIFFS[i];
+    return DIFFS[0];
+  }
+  function toast(msg) {
+    var t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function () { t.classList.remove('show'); }, 1500);
+  }
+
+  /* ================= 进度存取 ================= */
+  function loadProgress() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (!raw) return;
+      var p = JSON.parse(raw);
+      DIFFS.forEach(function (d) {
+        if (p[d.key]) {
+          var u = parseInt(p[d.key].u, 10);
+          progress[d.key].u = (u >= 1 && u <= PER_LEVEL) ? u : 1;
+          progress[d.key].done = p[d.key].done || {};
+        }
+      });
+    } catch (e) { /* 忽略损坏数据 */ }
+  }
+  function saveProgress() {
+    try { localStorage.setItem(KEY, JSON.stringify(progress)); } catch (e) {}
+  }
+  function calcStars(mistakes, hintsUsed) {
+    if (mistakes === 0 && hintsUsed === 0) return 3;
+    if (mistakes <= 2 && hintsUsed <= 1) return 2;
+    return 1;
+  }
+  function statsOf(key) {
+    var done = progress[key].done, n = 0, s = 0;
+    for (var k in done) { if (done.hasOwnProperty(k)) { n++; s += done[k].stars || 0; } }
+    return { count: n, stars: s };
+  }
+
+  /* ================= 首页 ================= */
+  function renderHome() {
+    var total = 0, doneAll = 0, starAll = 0;
+    var html = '';
+    DIFFS.forEach(function (d) {
+      var st = statsOf(d.key);
+      doneAll += st.count; starAll += st.stars;
+      total += PER_LEVEL;
+      var pct = Math.round(st.count / PER_LEVEL * 100);
+      html += '<button class="diff-card" data-diff="' + d.key + '">' +
+        '<span class="diff-badge" style="background:' + d.color + '">' + d.name + '</span>' +
+        '<span class="diff-info">' +
+          '<h3>' + d.name + '模式 · 20 关</h3>' +
+          '<p>' + d.desc + '　<span style="color:var(--ink3)">' + d.range + '</span></p>' +
+          '<span class="diff-bar"><i style="width:' + pct + '%;background:' + d.color + '"></i></span>' +
+        '</span>' +
+        '<span class="diff-stat"><b>' + st.count + '/' + PER_LEVEL + '</b>' + st.stars + ' ★</span>' +
+      '</button>';
+    });
+    $('diff-list').innerHTML = html;
+    $('m-total').textContent = total;
+    $('m-done').textContent = doneAll;
+    $('m-stars').textContent = starAll;
+  }
+
+  /* ================= 关卡选择 ================= */
+  var curDiff = 'easy';
+
+  function renderLevels(key) {
+    curDiff = key;
+    var d = diffOf(key);
+    var st = statsOf(key);
+    $('lv-title').textContent = d.name + '模式';
+    $('lv-title').style.color = d.color;
+    $('lv-sub').textContent = '已通关 ' + st.count + '/' + PER_LEVEL + ' · 累计 ' + st.stars + ' 星';
+    var html = '';
+    for (var lv = 1; lv <= PER_LEVEL; lv++) {
+      var rec = progress[key].done[lv];
+      var unlocked = lv <= progress[key].u;
+      var cls = 'lv' + (unlocked ? '' : ' locked') + (rec ? ' done' : '');
+      var starsHtml = '<span class="stars">';
+      for (var s = 1; s <= 3; s++) {
+        starsHtml += '<span class="' + (rec && rec.stars >= s ? 'on' : '') + '">★</span>';
+      }
+      starsHtml += '</span>';
+      var inner = unlocked
+        ? '<span>' + lv + '</span>' + starsHtml + (rec ? '<span class="t">' + fmtTime(rec.time) + '</span>' : '<span class="t">未通过</span>')
+        : '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
+      html += '<button class="' + cls + '" data-lv="' + lv + '">' + inner + '</button>';
+    }
+    $('lv-grid').innerHTML = html;
+  }
+
+  /* ================= 游戏状态 ================= */
+  var G = {
+    diff: 'easy', lv: 1, solution: [], given: [], board: [], notes: [],
+    selected: -1, noteMode: false, mistakes: 0, hints: HINTS,
+    history: [], elapsed: 0, tickStart: 0, timer: null, paused: false, finished: false
+  };
+  var cells = [];
+  var boardEl = $('board');
+
+  function buildPad() {
+    var html = '';
+    for (var n = 1; n <= 9; n++) {
+      html += '<button class="pad-btn" data-num="' + n + '">' + n + '<span class="c" data-c="' + n + '">9</span></button>';
+    }
+    $('pad').innerHTML = html;
+  }
+
+  function buildBoardDom() {
+    boardEl.innerHTML = '';
+    cells = [];
+    for (var i = 0; i < 81; i++) {
+      var d = document.createElement('div');
+      d.className = 'cell';
+      d.setAttribute('data-i', i);
+      var v = document.createElement('span');
+      v.className = 'val';
+      var nt = document.createElement('div');
+      nt.className = 'notes';
+      for (var n = 1; n <= 9; n++) {
+        var sp = document.createElement('span');
+        sp.setAttribute('data-n', n);
+        sp.textContent = n;
+        nt.appendChild(sp);
+      }
+      d.appendChild(v);
+      d.appendChild(nt);
+      boardEl.appendChild(d);
+      cells.push(d);
+    }
+  }
+
+  function startGame(key, lv) {
+    var data = PUZZLES[key][lv - 1];
+    G.diff = key; G.lv = lv;
+    G.solution = data.s.split('').map(Number);
+    var p = data.p.split('');
+    G.given = p.map(function (c) { return c !== '.'; });
+    G.board = p.map(function (c) { return c === '.' ? 0 : Number(c); });
+    G.notes = new Array(81);
+    for (var i = 0; i < 81; i++) G.notes[i] = 0;
+    G.selected = -1; G.noteMode = false; G.mistakes = 0; G.hints = HINTS;
+    G.history = []; G.elapsed = 0; G.finished = false; G.paused = false;
+
+    buildBoardDom();
+    boardEl.classList.remove('done');
+    $('g-level').textContent = diffOf(key).name + ' ' + lv;
+    $('t-note').classList.remove('on');
+    $('tip-note').classList.add('hide');
+    $('g-mistake-stat').classList.remove('warn');
+    updateStats();
+    renderBoard();
+    startTimer();
+    show('screen-game');
+  }
+
+  function updateStats() {
+    $('g-mistake').textContent = G.mistakes;
+    $('g-hint').textContent = G.hints;
+    $('t-hint').disabled = G.hints <= 0;
+    // 数字剩余统计
+    var cnt = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    for (var i = 0; i < 81; i++) {
+      var v = G.board[i];
+      if (v && v === G.solution[i]) cnt[v]++;
+    }
+    for (var n = 1; n <= 9; n++) {
+      var el = $('pad').querySelector('[data-c="' + n + '"]');
+      var left = 9 - cnt[n];
+      el.textContent = left;
+      el.parentNode.classList.toggle('zero', left <= 0);
+    }
+  }
+
+  function renderBoard() {
+    var sel = G.selected;
+    var selRow = sel >= 0 ? Math.floor(sel / 9) : -1;
+    var selCol = sel >= 0 ? sel % 9 : -1;
+    var selBox = sel >= 0 ? boxOf(sel) : -1;
+    var selVal = sel >= 0 ? G.board[sel] : 0;
+
+    for (var i = 0; i < 81; i++) {
+      var el = cells[i];
+      var v = G.board[i];
+      var cls = 'cell';
+      if (G.given[i]) cls += ' given';
+      if (i % 9 === 2 || i % 9 === 5) cls += ' br';
+      var r = Math.floor(i / 9);
+      if (r === 2 || r === 5) cls += ' bb';
+      if (sel >= 0 && i !== sel && (r === selRow || i % 9 === selCol || boxOf(i) === selBox)) cls += ' peer';
+      if (selVal && v === selVal) cls += ' same';
+      if (G.hinted && G.hinted[i]) cls += ' hinted';
+      if (v && !G.given[i] && v !== G.solution[i]) cls += ' wrong';
+      if (i === sel) cls += ' sel';
+      el.className = cls;
+
+      var valEl = el.firstChild, noteEl = el.lastChild;
+      if (v) {
+        valEl.textContent = v;
+        noteEl.style.display = 'none';
+      } else {
+        valEl.textContent = '';
+        noteEl.style.display = 'grid';
+        var m = G.notes[i];
+        var kids = noteEl.children;
+        for (var k = 0; k < 9; k++) {
+          kids[k].style.visibility = (m >> k) & 1 ? 'visible' : 'hidden';
+        }
+      }
+    }
+  }
+
+  function selectCell(i) {
+    if (G.finished) return;
+    G.selected = i;
+    renderBoard();
+  }
+
+  function snapshot() {
+    G.history.push({
+      board: G.board.slice(),
+      notes: G.notes.slice(),
+      mistakes: G.mistakes
+    });
+    if (G.history.length > 300) G.history.shift();
+  }
+
+  function place(n) {
+    var i = G.selected;
+    if (i < 0) { toast('请先点击一个格子'); return; }
+    if (G.given[i]) { toast('这是题目给定的数字，不可修改'); return; }
+    if (G.finished) return;
+
+    snapshot();
+    G.hinted && (G.hinted[i] = false);
+
+    if (G.noteMode) {
+      if (G.board[i]) { G.board[i] = 0; }
+      G.notes[i] ^= (1 << (n - 1));
+      renderBoard();
+      return;
+    }
+
+    if (G.board[i] === n) {          // 再次点击同一个数字 -> 擦除
+      G.board[i] = 0;
+      renderBoard();
+      updateStats();
+      return;
+    }
+
+    G.board[i] = n;
+    G.notes[i] = 0;
+    if (n !== G.solution[i]) {
+      G.mistakes++;
+      $('g-mistake-stat').classList.add('warn');
+    } else {
+      // 自动清理同行/列/宫的候选数
+      var r = Math.floor(i / 9), c = i % 9, b = boxOf(i), bit = ~(1 << (n - 1));
+      for (var k = 0; k < 81; k++) {
+        if (k === i) continue;
+        if (Math.floor(k / 9) === r || k % 9 === c || boxOf(k) === b) G.notes[k] &= bit;
+      }
+    }
+    renderBoard();
+    updateStats();
+    checkWin();
+  }
+
+  function erase() {
+    var i = G.selected;
+    if (i < 0) { toast('请先点击一个格子'); return; }
+    if (G.given[i]) { toast('题目给定的数字不可擦除'); return; }
+    if (!G.board[i] && !G.notes[i]) return;
+    snapshot();
+    G.board[i] = 0;
+    G.notes[i] = 0;
+    if (G.hinted) G.hinted[i] = false;
+    renderBoard();
+    updateStats();
+  }
+
+  function undo() {
+    if (!G.history.length) { toast('没有可撤销的操作'); return; }
+    var s = G.history.pop();
+    G.board = s.board;
+    G.notes = s.notes;
+    G.mistakes = s.mistakes;
+    renderBoard();
+    updateStats();
+  }
+
+  function hint() {
+    if (G.finished) return;
+    if (G.hints <= 0) { toast('本关提示次数已用完'); return; }
+    var i = G.selected;
+    if (i < 0 || G.given[i] || G.board[i] === G.solution[i]) {
+      // 优先取选中的空格，否则找第一个空格
+      var empty = [];
+      for (var k = 0; k < 81; k++) if (!G.given[k] && G.board[k] !== G.solution[k]) empty.push(k);
+      if (!empty.length) return;
+      i = empty[Math.floor(Math.random() * empty.length)];
+    }
+    snapshot();
+    G.hinted = G.hinted || {};
+    G.board[i] = G.solution[i];
+    G.notes[i] = 0;
+    G.hinted[i] = true;
+    G.hints--;
+    G.selected = i;
+    renderBoard();
+    updateStats();
+    toast('已提示 1 个数字，剩余 ' + G.hints + ' 次');
+    checkWin();
+  }
+
+  function checkWin() {
+    for (var i = 0; i < 81; i++) if (G.board[i] !== G.solution[i]) return false;
+    G.finished = true;
+    stopTimer();
+    boardEl.classList.add('done');
+    var hintsUsed = HINTS - G.hints;
+    var stars = calcStars(G.mistakes, hintsUsed);
+    var rec = progress[G.diff].done[G.lv];
+    if (!rec || stars > rec.stars || (stars === rec.stars && G.elapsed < rec.time)) {
+      progress[G.diff].done[G.lv] = {
+        stars: rec ? Math.max(stars, rec.stars) : stars,
+        time: rec ? Math.min(G.elapsed, rec.time) : G.elapsed
+      };
+    }
+    if (G.lv + 1 <= PER_LEVEL && progress[G.diff].u < G.lv + 1) progress[G.diff].u = G.lv + 1;
+    saveProgress();
+    setTimeout(function () { showWin(); }, 420);
+    return true;
+  }
+
+  function showWin() {
+    var hintsUsed = HINTS - G.hints;
+    var stars = calcStars(G.mistakes, hintsUsed);
+    $('win-sub').textContent = diffOf(G.diff).name + ' · 第 ' + G.lv + ' 关';
+    $('w-time').textContent = fmtTime(G.elapsed);
+    $('w-mistake').textContent = G.mistakes;
+    $('w-hint').textContent = hintsUsed;
+    var spans = $('win-stars').children;
+    for (var i = 0; i < 3; i++) spans[i].className = i < stars ? 'on' : '';
+    $('btn-next').style.display = G.lv < PER_LEVEL ? '' : 'none';
+    $('ov-win').classList.remove('hide');
+  }
+
+  /* ================= 计时 ================= */
+  function startTimer() {
+    stopTimer();
+    G.tickStart = Date.now();
+    G.timer = setInterval(tick, 250);
+    $('g-time').textContent = fmtTime(G.elapsed);
+  }
+  function tick() {
+    if (G.paused || G.finished || !G.tickStart) return;
+    var now = G.elapsed + (Date.now() - G.tickStart) / 1000;
+    $('g-time').textContent = fmtTime(now);
+  }
+  function freeze() {
+    if (G.tickStart) {
+      G.elapsed += (Date.now() - G.tickStart) / 1000;
+      G.tickStart = 0;
+    }
+  }
+  function resume() {
+    if (!G.tickStart) G.tickStart = Date.now();
+  }
+  function stopTimer() {
+    freeze();
+    if (G.timer) { clearInterval(G.timer); G.timer = null; }
+    $('g-time').textContent = fmtTime(G.elapsed);
+  }
+
+  function pauseGame() {
+    if (G.finished || G.paused) return;
+    G.paused = true;
+    freeze();
+    $('p-level').textContent = diffOf(G.diff).name + ' ' + G.lv;
+    $('p-time').textContent = fmtTime(G.elapsed);
+    $('p-mistake').textContent = G.mistakes;
+    $('ov-pause').classList.remove('hide');
+  }
+  function resumeGame() {
+    G.paused = false;
+    resume();
+    $('ov-pause').classList.add('hide');
+  }
+
+  /* ================= 屏幕切换 ================= */
+  function show(id) {
+    ['screen-home', 'screen-levels', 'screen-game'].forEach(function (s) {
+      $(s).classList.toggle('hide', s !== id);
+    });
+    window.scrollTo(0, 0);
+  }
+
+  /* ================= 事件绑定 ================= */
+  // 首页
+  $('diff-list').addEventListener('click', function (e) {
+    var card = e.target.closest('.diff-card');
+    if (!card) return;
+    renderLevels(card.getAttribute('data-diff'));
+    show('screen-levels');
+  });
+  $('btn-reset').addEventListener('click', function () {
+    var btn = this;
+    if (btn.getAttribute('data-armed') !== '1') {   // 两步确认，避免弹窗被拦截
+      btn.setAttribute('data-armed', '1');
+      btn.textContent = '再次点击确认重置';
+      btn.style.color = 'var(--danger)';
+      btn.style.borderColor = 'var(--danger)';
+      clearTimeout(btn._t);
+      btn._t = setTimeout(function () {
+        btn.removeAttribute('data-armed');
+        btn.textContent = '重置全部进度';
+        btn.style.color = '';
+        btn.style.borderColor = '';
+      }, 4000);
+      return;
+    }
+    clearTimeout(btn._t);
+    btn.removeAttribute('data-armed');
+    btn.textContent = '重置全部进度';
+    btn.style.color = '';
+    btn.style.borderColor = '';
+    try { localStorage.removeItem(KEY); } catch (e) {}
+    ['easy', 'medium', 'hard', 'hell'].forEach(function (k) { progress[k] = { u: 1, done: {} }; });
+    renderHome();
+    toast('进度已重置');
+  });
+
+  // 关卡选择
+  $('btn-lv-back').addEventListener('click', function () { renderHome(); show('screen-home'); });
+  $('lv-grid').addEventListener('click', function (e) {
+    var btn = e.target.closest('.lv');
+    if (!btn) return;
+    var lv = Number(btn.getAttribute('data-lv'));
+    if (lv > progress[curDiff].u) { toast('先通过前面的关卡才能解锁'); return; }
+    startGame(curDiff, lv);
+  });
+
+  // 游戏内
+  $('board').addEventListener('click', function (e) {
+    var c = e.target.closest('.cell');
+    if (!c) return;
+    selectCell(Number(c.getAttribute('data-i')));
+  });
+  $('pad').addEventListener('click', function (e) {
+    var b = e.target.closest('.pad-btn');
+    if (!b) return;
+    place(Number(b.getAttribute('data-num')));
+  });
+  $('t-undo').addEventListener('click', undo);
+  $('t-erase').addEventListener('click', erase);
+  $('t-hint').addEventListener('click', hint);
+  $('t-note').addEventListener('click', function () {
+    G.noteMode = !G.noteMode;
+    this.classList.toggle('on', G.noteMode);
+    $('tip-note').classList.toggle('hide', !G.noteMode);
+    toast(G.noteMode ? '已开启笔记模式' : '已关闭笔记模式');
+  });
+  $('btn-pause').addEventListener('click', pauseGame);
+  $('btn-back').addEventListener('click', function () {
+    if (G.finished) { renderLevels(G.diff); show('screen-levels'); return; }
+    pauseGame();
+  });
+
+  // 暂停弹窗
+  $('btn-resume').addEventListener('click', resumeGame);
+  $('btn-replay').addEventListener('click', function () {
+    $('ov-pause').classList.add('hide');
+    startGame(G.diff, G.lv);
+  });
+  $('btn-quit').addEventListener('click', function () {
+    stopTimer();
+    $('ov-pause').classList.add('hide');
+    renderLevels(G.diff);
+    show('screen-levels');
+  });
+
+  // 通关弹窗
+  $('btn-next').addEventListener('click', function () {
+    $('ov-win').classList.add('hide');
+    startGame(G.diff, Math.min(G.lv + 1, PER_LEVEL));
+  });
+  $('btn-again').addEventListener('click', function () {
+    $('ov-win').classList.add('hide');
+    startGame(G.diff, G.lv);
+  });
+  $('btn-tolist').addEventListener('click', function () {
+    $('ov-win').classList.add('hide');
+    renderLevels(G.diff);
+    show('screen-levels');
+  });
+
+  // 键盘
+  document.addEventListener('keydown', function (e) {
+    if ($('screen-game').classList.contains('hide')) return;
+    var k = e.key;
+    if (k === 'Escape') {
+      if (!$('ov-win').classList.contains('hide')) return;
+      if (G.paused) resumeGame(); else pauseGame();
+      return;
+    }
+    if (!$('ov-pause').classList.contains('hide') || !$('ov-win').classList.contains('hide')) return;
+    if (k >= '1' && k <= '9') { place(Number(k)); e.preventDefault(); return; }
+    if (k === 'Backspace' || k === 'Delete' || k === '0') { erase(); e.preventDefault(); return; }
+    if (k === ' ') {
+      G.noteMode = !G.noteMode;
+      $('t-note').classList.toggle('on', G.noteMode);
+      $('tip-note').classList.toggle('hide', !G.noteMode);
+      e.preventDefault(); return;
+    }
+    if (k === 'z' && (e.ctrlKey || e.metaKey)) { undo(); e.preventDefault(); return; }
+    if (k === 'h' || k === 'H') { hint(); return; }
+    var i = G.selected;
+    if (i < 0) i = 0;
+    var r = Math.floor(i / 9), c = i % 9;
+    if (k === 'ArrowUp') { r = (r + 8) % 9; selectCell(r * 9 + c); e.preventDefault(); }
+    else if (k === 'ArrowDown') { r = (r + 1) % 9; selectCell(r * 9 + c); e.preventDefault(); }
+    else if (k === 'ArrowLeft') { c = (c + 8) % 9; selectCell(r * 9 + c); e.preventDefault(); }
+    else if (k === 'ArrowRight') { c = (c + 1) % 9; selectCell(r * 9 + c); e.preventDefault(); }
+  });
+
+  // 切走自动暂停
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden && !$('screen-game').classList.contains('hide') && !G.finished && !G.paused) {
+      pauseGame();
+    }
+  });
+  window.addEventListener('blur', function () {
+    if (!$('screen-game').classList.contains('hide') && !G.finished && !G.paused &&
+        $('ov-win').classList.contains('hide')) {
+      pauseGame();
+    }
+  });
+
+  /* ================= 启动 ================= */
+  loadProgress();
+  buildPad();
+  renderHome();
+  show('screen-home');
+})();
+</script>
+</body>
+</html>
